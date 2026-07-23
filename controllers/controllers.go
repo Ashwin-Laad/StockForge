@@ -3,117 +3,292 @@ package controllers
 import (
 	"Mod/database"
 	"Mod/models"
-	"fmt"
-	"go/token"
-	"time"
+	"Mod/token"
 
+	"net/http"
+	"time"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 	"github.com/gin-gonic/gin"
 	"github.com/go-playground/validator/v10"
-	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/v2/bson"
+	"go.mongodb.org/mongo-driver/v2/mongo"
 )
 
-func HashPassword(s string) string
+// HashPassword converts a plain-text password into a secure hashed password.
+//
+// NOTE:
+// The implementation is assumed to exist elsewhere.
+// In production this would typically use bcrypt.
+func HashPassword(password string) string
 
-func verifyPassword(userPass string, actualPass string) (bool, string)
+// VerifyPassword compares the password entered by the user with the
+// hashed password stored in the database.
+//
+// Returns:
+//
+//	true  -> passwords match
+//	false -> passwords do not match
+//
+// The string return value usually contains an error message.
+func VerifyPassword(userPassword string, hashedPassword string) (bool, string)
 
-func signUp() gin.HandlerFunc {
-	//context here contains all info about the request object and allows for response
+// SignUp returns a Gin handler responsible for registering a new user.
+//
+// Why return gin.HandlerFunc?
+// ---------------------------
+// Gin expects every route to receive a handler function.
+//
+// Instead of executing immediately, this function returns another
+// function that Gin stores internally.
+//
+// Later, whenever a request arrives at:
+//
+//	POST /user/signup
+//
+// Gin executes the returned function.
+func SignUp() gin.HandlerFunc {
+
 	return func(ctx *gin.Context) {
 
-		//REMEMBER--> for incoming json cannot deal directly with it
-		//we will have to bind the incoming json to a struct of Same type
+		//--------------------------------------------------------
+		// Step 1 : Read incoming JSON
+		//--------------------------------------------------------
 
+		// user will hold the JSON received from the client.
+		//
+		// Example JSON:
+		//
+		// {
+		//   "first_name":"Ashwin",
+		//   "email":"abc@gmail.com"
+		// }
 		var user models.User
-		// func (c *gin.Context) BindJSON(obj any) error--bound to the Context
-		err := ctx.BindJSON(&user)
-		if err != nil {
-			fmt.Println("Error in Signing UP")
+
+		// BindJSON:
+		//
+		// Reads the HTTP request body.
+		// Converts JSON into the User struct.
+		//
+		// The '&' passes the address of the struct because
+		// BindJSON needs permission to modify it.
+		if err := ctx.BindJSON(&user); err != nil {
+
+			ctx.JSON(http.StatusBadRequest, gin.H{
+				"error": "Invalid JSON",
+			})
 			return
 		}
 
-		validateErr := validator.New().Struct(user)
-		if validateErr != nil {
-			ctx.JSON(400, gin.H{"error": "Some info is wrong"})
-			return
-		}
-		UserCollection := database.GetCollection(database.Client, "User")
+		//--------------------------------------------------------
+		// Step 2 : Validate fields
+		//--------------------------------------------------------
 
-		count, err := UserCollection.CountDocuments(ctx, bson.M{"email": user.Email})
-		if err != nil {
-			fmt.Println("Error in finding email")
+		validate := validator.New()
+
+		if err := validate.Struct(user); err != nil {
+
+			ctx.JSON(http.StatusBadRequest, gin.H{
+				"error": err.Error(),
+			})
+
 			return
 		}
-		if count >= 1 {
-			ctx.JSON(400, gin.H{"count": "more than 1"})
+
+		//--------------------------------------------------------
+		// Step 3 : Access User collection
+		//--------------------------------------------------------
+
+		userCollection := database.GetCollection(database.Client, "User")
+
+		//--------------------------------------------------------
+		// Step 4 : Check if email already exists
+		//--------------------------------------------------------
+
+		count, err := userCollection.CountDocuments(
+			ctx,
+			bson.M{
+				"email": user.Email,
+			},
+		)
+
+		if err != nil {
+
+			ctx.JSON(http.StatusInternalServerError, gin.H{
+				"error": "Database query failed",
+			})
+
+			return
 		}
-		//all good means new user here
+
+		if count > 0 {
+
+			ctx.JSON(http.StatusConflict, gin.H{
+				"error": "Email already exists",
+			})
+
+			return
+		}
+
+		//--------------------------------------------------------
+		// Step 5 : Hash password
+		//--------------------------------------------------------
+
 		user.Password = HashPassword(user.Password)
 
-		//now for rest of the feilds server will have to fill it
-		Token, Refresh_Token := token.GenerateToken(user.name, user.email)
-		Created_At := time.Now()
-		Updated_At := time.Now()
-		UserID := primitive.NewObjectID()
-		Usercart := make([]models.ProductUser, 0)
-		Address_details := make([]models.Address, 0)
-		OrderStatus := make([]models.Order, 0)
+		//--------------------------------------------------------
+		// Step 6 : Generate server-side fields
+		//--------------------------------------------------------
 
-		//insert the user into database
-		_, insertErr := UserCollection.InsertOne(ctx, user)
-		if insertErr != nil {
-			fmt.Println("Error in inserting email")
+		token, refreshToken := token.GenerateToken(
+			user.FirstName,
+			user.Email,
+		)
+
+		user.Token = token
+		user.RefreshToken = refreshToken
+
+		user.CreatedAt = time.Now()
+		user.UpdatedAt = time.Now()
+
+		user.UserID = primitive.NewObjectID().Hex()
+
+		user.UserCart = make([]models.ProductUser, 0)
+
+		user.AddressDetails = make([]models.Address, 0)
+
+		user.OrderStatus = make([]models.Order, 0)
+
+		//--------------------------------------------------------
+		// Step 7 : Insert into MongoDB
+		//--------------------------------------------------------
+
+		_, err = userCollection.InsertOne(ctx, user)
+
+		if err != nil {
+
+			ctx.JSON(http.StatusInternalServerError, gin.H{
+				"error": "Failed to create user",
+			})
+
 			return
 		}
 
-		//if everything was working
-		ctx.JSON(200, "Successfully signed in")
-	}
+		//--------------------------------------------------------
+		// Step 8 : Success response
+		//--------------------------------------------------------
 
+		ctx.JSON(http.StatusCreated, gin.H{
+			"message": "Successfully signed up",
+		})
+	}
 }
+
+// Login authenticates an existing user.
 func Login() gin.HandlerFunc {
+
 	return func(ctx *gin.Context) {
 
-		//REMEMBER--> for incoming json cannot deal directly with it
-		//we will have to bind the incoming json to a struct of Same type
+		//--------------------------------------------------------
+		// Step 1 : Read JSON
+		//--------------------------------------------------------
 
 		var user models.User
-		// func (c *gin.Context) BindJSON(obj any) error--bound to the Context
-		err := ctx.BindJSON(&user)
-		//even though extra feils exits its okay
-		if err != nil {
-			fmt.Println("Error in Logging UP")
+
+		if err := ctx.BindJSON(&user); err != nil {
+
+			ctx.JSON(http.StatusBadRequest, gin.H{
+				"error": "Invalid JSON",
+			})
+
 			return
 		}
 
-		//gets me the table or collection via the client object 
-	
-		UserCollection := database.GetCollection(database.Client, "User")
+		//--------------------------------------------------------
+		// Step 2 : Get collection
+		//--------------------------------------------------------
+
+		userCollection := database.GetCollection(database.Client, "User")
+
+		//--------------------------------------------------------
+		// Step 3 : Find user by email
+		//--------------------------------------------------------
 
 		var foundUser models.User
-		//decode is passed the address of found user
-	    UserCollection.FindOne(ctx, bson.M{"email": user.Email}).Decode(&foundUser)
+
+		err := userCollection.FindOne(
+			ctx,
+			bson.M{
+				"email": user.Email,
+			},
+		).Decode(&foundUser)
+
 		if err != nil {
-			fmt.Println("Error in finding email login")
+
+			if err == mongo.ErrNoDocuments {
+
+				ctx.JSON(http.StatusUnauthorized, gin.H{
+					"error": "Invalid email",
+				})
+
+				return
+			}
+
+			ctx.JSON(http.StatusInternalServerError, gin.H{
+				"error": "Database error",
+			})
+
 			return
 		}
-		//verify password
-		verify,message:=verifyPassword(user.Password, foundUser.Password)
-		if verify!=true{
-			ctx.JSON(400, "Wrong password"+message)
+
+		//--------------------------------------------------------
+		// Step 4 : Verify password
+		//--------------------------------------------------------
+
+		isValid, message := VerifyPassword(
+			user.Password,
+			foundUser.Password,
+		)
+
+		if !isValid {
+
+			ctx.JSON(http.StatusUnauthorized, gin.H{
+				"error": message,
+			})
+
+			return
 		}
 
-		//verified generate token
-		Token, Refresh_Token := token.GenerateToken(foundUser.First_Name, foundUser.email)
+		//--------------------------------------------------------
+		// Step 5 : Generate new tokens
+		//--------------------------------------------------------
 
-		c.JSON(200,"Login Success")
+		token, refreshToken := token.GenerateToken(
+			foundUser.FirstName,
+			foundUser.Email,
+		)
 
+		foundUser.Token = token
+		foundUser.RefreshToken = refreshToken
+
+		//--------------------------------------------------------
+		// Step 6 : Send response
+		//--------------------------------------------------------
+
+		ctx.JSON(http.StatusOK, gin.H{
+			"message": "Login successful",
+			"token": token,
+		})
 	}
-
 }
 
-func addProducts() gin.HandlerFunc {}
+func AddProducts() gin.HandlerFunc {
+	return nil
+}
 
-func SearchProduct() gin.HandlerFunc {}
+func SearchProduct() gin.HandlerFunc {
+	return nil
+}
 
-func SeeProducts() gin.HandlerFunc {}
+func SeeProducts() gin.HandlerFunc {
+	return nil
+}

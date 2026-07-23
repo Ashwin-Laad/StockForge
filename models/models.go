@@ -1,67 +1,224 @@
 package models
 
-//Here each struct is a representation of a collection
+// Each struct in this file represents one MongoDB collection or a document
+// that is stored inside another collection.
+//
+// These structs act as "blueprints" for the data. Whenever data is received
+// from MongoDB or sent back to it, the MongoDB driver converts between BSON
+// documents and these Go structs.
+//
+// Similarly, when data is sent or received through an HTTP API, the encoding/json
+// package converts between JSON and these structs using the json tags.
+
 import (
 	"time"
-
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
-//annotation tells golang how would it look in our json
-//we would also need marshaling and unmarshaling to actually assign the particular values
+// Struct tags (json/bson) tell Go how each field should appear while
+// encoding (marshalling) and decoding (unmarshalling).
+//
+// Example:
+//
+// Go Field:
+//     FirstName
+//
+// JSON:
+//     {
+//         "first_name": "Ashwin"
+//     }
+//
+// BSON (MongoDB):
+//     {
+//         "first_name": "Ashwin"
+//     }
+//
+// Without these tags, Go would use the field names themselves,
+// which usually don't match API or database naming conventions.
 
 type User struct {
-	//for struct the item needs to be captilalized for export but in db we have small case
-	//go lang does not understand json directly hence we look for
-	ID            primitive.ObjectID `json:_id bson:_id`
-	First_Name    string             `json:first_name ` //binds this name for the struct when sending and receving this would be used
-	Last_Name     string             `json:last_name`
-	Password      string             `json:password`
-	Email         string             `json:email`
-	Phone         string             `json:phone`
-	Token         string             `json:token`
-	Refresh_Token string             `json:refresh_token`
-	Created_At    time.Time          `json:created_at`
-	Updated_At    time.Time          `json:updated_at`
-	UserID        string             `json:user_id`
-	Usercart      []ProductUser      `json:user_cart bson:user_cart` //bson also used as referring to many structs
-	//user can have many order
-	Address_details []Address `json:address bson:address`
-	OrderStatus     []Order   `json:address bson:address`
+
+	// ID is MongoDB's unique identifier (_id).
+	//
+	// primitive.ObjectID is MongoDB's special type for uniquely identifying
+	// every document inside a collection.
+	//
+	// Every user stored in MongoDB gets one automatically.
+	ID primitive.ObjectID `json:"_id" bson:"_id"`
+
+	// FirstName stores the user's first name.
+	//
+	// Type: string
+	// Example: "Ashwin"
+	FirstName string `json:"first_name"`
+
+	// LastName stores the surname of the user.
+	LastName string `json:"last_name"`
+
+	// Password stores the user's password.
+	//
+	// IMPORTANT:
+	// In production this should NEVER store the plain password.
+	// Instead it should contain a hashed password (bcrypt, Argon2, etc.).
+	Password string `json:"password"`
+
+	// Email stores the user's email address.
+	Email string `json:"email"`
+
+	// Phone stores the user's contact number.
+	Phone string `json:"phone"`
+
+	// Token stores the JWT access token currently assigned
+	// to this user after authentication.
+	Token string `json:"token"`
+
+	// RefreshToken stores the refresh token used
+	// to generate new access tokens.
+	RefreshToken string `json:"refresh_token"`
+
+	// CreatedAt stores when the account was first created.
+	//
+	// time.Time is Go's built-in type for representing
+	// dates and timestamps.
+	CreatedAt time.Time `json:"created_at"`
+
+	// UpdatedAt stores the last time this document was modified.
+	UpdatedAt time.Time `json:"updated_at"`
+
+	// UserID is another unique identifier stored as a string.
+	//
+	// Unlike MongoDB's ObjectID, this may be generated manually
+	// and used throughout the application.
+	UserID string `json:"user_id"`
+
+	// UserCart stores every product currently present
+	// in the user's shopping cart.
+	//
+	// []ProductUser means:
+	// - [] represents a slice (dynamic array).
+	// - ProductUser is the type stored inside that slice.
+	//
+	// Therefore this field can hold zero, one, or many products.
+	UserCart []ProductUser `json:"user_cart" bson:"user_cart"`
+
+	// AddressDetails stores every address belonging to the user.
+	//
+	// A user may save multiple addresses like:
+	// Home
+	// Office
+	// Hostel
+	AddressDetails []Address `json:"address" bson:"address"`
+
+	// OrderStatus stores every order placed by this user.
+	//
+	// Since one user can place multiple orders,
+	// this is also represented as a slice.
+	OrderStatus []Order `json:"address" bson:"address"`
 }
+
+// Product represents a product available in the store.
+//
+// These products are typically stored in the Products collection
+// and are shown to users for purchase.
 type Product struct {
-	Product_ID     primitive.ObjectID `json:_id bson:_id`
-	Product_name   string             `json:product_name`
-	Product_Price  int                `json:product_price`
-	Product_rating int                `json:product_rating`
-	Image          string             `json:image` //using a url
+
+	// Unique MongoDB identifier for this product.
+	ProductID primitive.ObjectID `json:"_id" bson:"_id"`
+
+	// Product name.
+	ProductName string `json:"product_name"`
+
+	// Price of the product.
+	ProductPrice int `json:"product_price"`
+
+	// Product rating.
+	//
+	// Example:
+	// 5 means five-star rating.
+	ProductRating int `json:"product_rating"`
+
+	// URL pointing to the product image.
+	Image string `json:"image"`
 }
 
-//Individual product items user has selected
-
+// ProductUser represents one product that the user
+// has selected or added to their cart.
+//
+// Although it looks similar to Product,
+// keeping it separate allows adding user-specific
+// information later (quantity, selected size, etc.).
 type ProductUser struct {
-	Product_ID     primitive.ObjectID `json:_id bson:_id`
-	Product_name   string             `json:product_name`
-	Product_Price  int                `json:product_price`
-	Product_rating int                `json:product_rating`
-	Image          string             `json:image` //using a url
+
+	ProductID primitive.ObjectID `json:"_id" bson:"_id"`
+
+	ProductName string `json:"product_name"`
+
+	ProductPrice int `json:"product_price"`
+
+	ProductRating int `json:"product_rating"`
+
+	Image string `json:"image"`
 }
+
+// Address represents one saved delivery address.
+//
+// Since users may have multiple saved addresses,
+// this struct is stored inside a slice.
 type Address struct {
-	Address_id primitive.ObjectID `bson:_id`
-	House      string             `json:house_name`
-	Street     string             `json:house_street`
-	City       string             `json:house_city`
-	Pincode    int                `json:house_pincode`
+
+	// Unique identifier for this address.
+	AddressID primitive.ObjectID `bson:"_id"`
+
+	// House or apartment number.
+	House string `json:"house_name"`
+
+	// Street name.
+	Street string `json:"house_street"`
+
+	// City name.
+	City string `json:"house_city"`
+
+	// Postal PIN code.
+	Pincode int `json:"house_pincode"`
 }
+
+// Order represents one completed purchase.
+//
+// Every order contains its own list of products,
+// payment details, timestamps and pricing information.
 type Order struct {
-	Order_ID       primitive.ObjectID `json:_id bson:_id`
-	Order_Cart     []ProductUser      `json:order_cart`
-	Ordered_At     time.Time          `json:ordered_at`
-	Price          int                `json:price`
-	Discount       int                `json:discount`
-	Payment_Method Paymemt            `json:payment_method`
+
+	// Unique identifier for the order.
+	OrderID primitive.ObjectID `json:"_id" bson:"_id"`
+
+	// OrderCart stores all products purchased
+	// in this particular order.
+	OrderCart []ProductUser `json:"order_cart"`
+
+	// OrderedAt stores the exact time
+	// when the order was placed.
+	OrderedAt time.Time `json:"ordered_at"`
+
+	// Total order price.
+	Price int `json:"price"`
+
+	// Discount applied on the order.
+	Discount int `json:"discount"`
+
+	// PaymentMethod stores how
+	// the customer paid.
+	PaymentMethod Payment `json:"payment_method"`
 }
-type Paymemt struct {
-	Digital bool `json:digital`
-	COD     bool `json:cod`
+
+// Payment represents the payment mode
+// chosen by the customer.
+//
+// Only one of these should normally be true.
+type Payment struct {
+
+	// true if paid online
+	Digital bool `json:"digital"`
+
+	// true if Cash On Delivery
+	COD bool `json:"cod"`
 }

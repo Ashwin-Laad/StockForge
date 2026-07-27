@@ -4,8 +4,8 @@ import (
 	"context"
 	"fmt"
 
-	"go.mongodb.org/mongo-driver/v2/mongo"
-	"go.mongodb.org/mongo-driver/v2/mongo/options"
+	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 // ConnectToDb establishes a connection to the MongoDB server
@@ -27,10 +27,11 @@ import (
 //   - Delete documents
 //
 // Returns:
-//   *mongo.Client
-//       A pointer to the connected MongoDB client.
 //
-//       If the connection fails, nil is returned.
+//	*mongo.Client
+//	    A pointer to the connected MongoDB client.
+//
+//	    If the connection fails, nil is returned.
 //
 // Why return a pointer?
 // ---------------------
@@ -58,6 +59,9 @@ func ConnectToDb() *mongo.Client {
 	//
 	// If MongoDB were hosted online, this URI would instead
 	// point to MongoDB Atlas or another remote server.
+
+	// uri := "mongodb://localhost:27017"
+
 	uri := "mongodb://localhost:27017"
 
 	// ApplyURI creates a ClientOptions object.
@@ -68,7 +72,10 @@ func ConnectToDb() *mongo.Client {
 	// Here we specify only the database address,
 	// although many other options (authentication,
 	// TLS, timeouts, etc.) can also be configured.
-	client, err := mongo.Connect(options.Client().ApplyURI(uri))
+	client, err := mongo.Connect(
+		context.TODO(),
+		options.Client().ApplyURI(uri),
+	)
 
 	// If Connect() encounters an error while creating
 	// the client, return nil to indicate failure.
@@ -150,16 +157,19 @@ var Client *mongo.Client = ConnectToDb()
 // -----------
 //
 // client
-//     The connected MongoDB client.
+//
+//	The connected MongoDB client.
 //
 // collectionName
-//     The name of the collection to access.
+//
+//	The name of the collection to access.
 //
 // Returns:
 // --------
 //
 // *mongo.Collection
-//     A pointer representing the requested collection.
+//
+//	A pointer representing the requested collection.
 //
 // This function does NOT create the collection.
 // It simply returns a handle that lets us perform

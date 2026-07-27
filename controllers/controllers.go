@@ -4,14 +4,17 @@ import (
 	"Mod/database"
 	"Mod/models"
 	"Mod/token"
+	"fmt"
 
 	"net/http"
 	"time"
-	"go.mongodb.org/mongo-driver/bson/primitive"
+
 	"github.com/gin-gonic/gin"
 	"github.com/go-playground/validator/v10"
-	"go.mongodb.org/mongo-driver/v2/bson"
-	"go.mongodb.org/mongo-driver/v2/mongo"
+	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
+	"go.mongodb.org/mongo-driver/mongo"
+	"golang.org/x/crypto/bcrypt"
 )
 
 // HashPassword converts a plain-text password into a secure hashed password.
@@ -19,18 +22,95 @@ import (
 // NOTE:
 // The implementation is assumed to exist elsewhere.
 // In production this would typically use bcrypt.
-func HashPassword(password string) string
 
-// VerifyPassword compares the password entered by the user with the
-// hashed password stored in the database.
+// HashPassword converts a plain-text password into a hashed password.
+//
+// Why hash passwords?
+// -------------------
+// Passwords should NEVER be stored directly in the database.
+//
+// Instead, bcrypt converts the password into a secure one-way hash.
+//
+// Example:
+//
+// Password:
+//
+//	hello123
+//
+// Stored in MongoDB:
+//
+//	$2a$10$9jz3g4X8K7...
+//
+// Even if someone gains access to the database,
+// they cannot recover the original password.
+func HashPassword(password string) string {
+
+	// GenerateFromPassword creates a bcrypt hash.
+	//
+	// Parameters:
+	//
+	// []byte(password)
+	//     bcrypt works with bytes instead of strings.
+	//
+	// bcrypt.DefaultCost
+	//     Determines how much computation bcrypt performs.
+	//     Higher cost = more secure but slower.
+	//
+	// Returns:
+	//
+	// hashedPassword []byte
+	// err            error
+	hashedPassword, err := bcrypt.GenerateFromPassword(
+		[]byte(password),
+		bcrypt.DefaultCost,
+	)
+
+	// If hashing fails, return an empty string.
+	if err != nil {
+		return ""
+	}
+
+	// Convert []byte back into a string before storing it.
+	return string(hashedPassword)
+}
+
+// VerifyPassword compares the password entered by the user
+// with the hashed password stored in MongoDB.
 //
 // Returns:
 //
-//	true  -> passwords match
-//	false -> passwords do not match
+//	true  -> Passwords match
+//	false -> Passwords do not match
 //
-// The string return value usually contains an error message.
-func VerifyPassword(userPassword string, hashedPassword string) (bool, string)
+// The second return value contains an error message.
+func VerifyPassword(
+	userPassword string,
+	hashedPassword string,
+) (bool, string) {
+
+	// CompareHashAndPassword hashes the user's entered password
+	// internally and compares it against the stored hash.
+	//
+	// Parameters:
+	//
+	// []byte(hashedPassword)
+	//     Password hash stored in MongoDB.
+	//
+	// []byte(userPassword)
+	//     Password entered during login.
+	err := bcrypt.CompareHashAndPassword(
+		[]byte(hashedPassword),
+		[]byte(userPassword),
+	)
+
+	// Passwords do not match.
+	if err != nil {
+		return false, err.Error()
+	}
+
+	// Password is correct.
+	return true, ""
+}
 
 // SignUp returns a Gin handler responsible for registering a new user.
 //
@@ -114,7 +194,7 @@ func SignUp() gin.HandlerFunc {
 		if err != nil {
 
 			ctx.JSON(http.StatusInternalServerError, gin.H{
-				"error": "Database query failed",
+				"error": err.Error(),
 			})
 
 			return
@@ -139,11 +219,16 @@ func SignUp() gin.HandlerFunc {
 		// Step 6 : Generate server-side fields
 		//--------------------------------------------------------
 
-		token, refreshToken := token.GenerateToken(
+		token, refreshToken, err := token.GenerateToken(
 			user.FirstName,
 			user.Email,
 		)
-
+		if err != nil {
+			ctx.JSON(http.StatusInternalServerError, gin.H{
+				"error": "Failed to generate token",
+			})
+			return
+		}
 		user.Token = token
 		user.RefreshToken = refreshToken
 
@@ -167,7 +252,7 @@ func SignUp() gin.HandlerFunc {
 		if err != nil {
 
 			ctx.JSON(http.StatusInternalServerError, gin.H{
-				"error": "Failed to create user",
+				"error": err.Error(),
 			})
 
 			return
@@ -262,11 +347,16 @@ func Login() gin.HandlerFunc {
 		// Step 5 : Generate new tokens
 		//--------------------------------------------------------
 
-		token, refreshToken := token.GenerateToken(
+		token, refreshToken, err := token.GenerateToken(
 			foundUser.FirstName,
 			foundUser.Email,
 		)
-
+		if err != nil {
+			ctx.JSON(http.StatusInternalServerError, gin.H{
+				"error": "Failed to generate token",
+			})
+			return
+		}
 		foundUser.Token = token
 		foundUser.RefreshToken = refreshToken
 
@@ -276,19 +366,127 @@ func Login() gin.HandlerFunc {
 
 		ctx.JSON(http.StatusOK, gin.H{
 			"message": "Login successful",
-			"token": token,
+			"token":   token,
+			"user_id": foundUser.ID,
 		})
 	}
 }
 
-func AddProducts() gin.HandlerFunc {
-	return nil
+func (app *Application) AddProduct() gin.HandlerFunc {
+
+	return func(ctx *gin.Context) {
+
+		productCollection := database.GetCollection(database.Client, "Products")
+
+		var product models.Product
+
+		//----------------------------------------------------
+		// Read JSON
+		//----------------------------------------------------
+
+		if err := ctx.BindJSON(&product); err != nil {
+			ctx.JSON(http.StatusBadRequest, gin.H{
+				"error": "Invalid product data",
+			})
+			return
+		}
+
+		//----------------------------------------------------
+		// Generate MongoDB ObjectID
+		//----------------------------------------------------
+
+		product.ProductID = primitive.NewObjectID()
+
+		//----------------------------------------------------
+		// Insert product
+		//----------------------------------------------------
+		fmt.Printf("%T\n", product.ProductID)
+		fmt.Println(product.ProductID.Hex())
+		_, err := productCollection.InsertOne(ctx, product)
+		if err != nil {
+			ctx.JSON(http.StatusInternalServerError, gin.H{
+				"error": "Failed to add product",
+			})
+			return
+		}
+
+		ctx.JSON(http.StatusCreated, gin.H{
+			"message": "Product added successfully",
+		})
+	}
 }
 
-func SearchProduct() gin.HandlerFunc {
-	return nil
+func (app *Application) InstantBuy() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		UserQueryID := c.Query("userid")
+		if UserQueryID == "" {
+			fmt.Println("UserID is empty")
+			c.JSON(http.StatusBadRequest, "Id not given")
+			return
+		}
+		ProductQueryID := c.Query("pid")
+		if ProductQueryID == "" {
+			fmt.Println("Product_ID id is empty")
+			c.JSON(http.StatusBadRequest, "product_id is empty")
+		}
+		productID, err := primitive.ObjectIDFromHex(ProductQueryID)
+		if err != nil {
+			fmt.Println(err)
+			c.AbortWithStatus(http.StatusInternalServerError)
+			return
+		}
+
+		err = database.InstantBuyer(c, app.prodCollection, app.userCollection, productID, UserQueryID)
+		if err != nil {
+			c.IndentedJSON(http.StatusInternalServerError, err)
+		}
+		c.IndentedJSON(200, "Successully placed the order")
+	}
 }
 
-func SeeProducts() gin.HandlerFunc {
-	return nil
+func (app *Application) GetTotalFromUserCart() gin.HandlerFunc {
+	return func(ctx *gin.Context) {
+
+		userID := ctx.Query("id")
+		if userID == "" {
+			ctx.JSON(http.StatusBadRequest, gin.H{
+				"error": "No user ID",
+			})
+
+			return
+		}
+
+		UserHexId, err := primitive.ObjectIDFromHex(userID)
+
+		// //get the user whole profile from this userID
+		// var NeededUser models.User
+		// // primitive.E represents one field of a MongoDB document.
+		// _, err:= app.userCollection.FindOne(ctx,bson.D{primitive.E{Key: "_id", Value: UserHexId}})
+
+		if err != nil {
+			return
+		}
+
+		var user models.User
+		userCollection := database.GetCollection(database.Client, "User")
+		err = userCollection.FindOne(
+			ctx,
+			bson.M{"_id": UserHexId},
+		).Decode(&user)
+
+		if err != nil {
+			return
+		}
+
+		total := 0
+
+		for _, product := range user.UserCart {
+			total += int(product.ProductPrice)
+		}
+
+		ctx.JSON(http.StatusOK, gin.H{
+			"total": total,
+			"cart":  user.UserCart,
+		})
+	}
 }

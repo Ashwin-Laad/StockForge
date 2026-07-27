@@ -12,6 +12,7 @@ package models
 
 import (
 	"time"
+
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
@@ -44,7 +45,7 @@ type User struct {
 	// every document inside a collection.
 	//
 	// Every user stored in MongoDB gets one automatically.
-	ID primitive.ObjectID `json:"_id" bson:"_id"`
+	ID primitive.ObjectID `bson:"_id,omitempty" json:"id,omitempty"`
 
 	// FirstName stores the user's first name.
 	//
@@ -113,7 +114,7 @@ type User struct {
 	//
 	// Since one user can place multiple orders,
 	// this is also represented as a slice.
-	OrderStatus []Order `json:"address" bson:"address"`
+	OrderStatus []Order `json:"orders" bson:"orders"`
 }
 
 // Product represents a product available in the store.
@@ -126,19 +127,19 @@ type Product struct {
 	ProductID primitive.ObjectID `json:"_id" bson:"_id"`
 
 	// Product name.
-	ProductName string `json:"product_name"`
+	ProductName string `json:"product_name" bson:"product_name"`
 
 	// Price of the product.
-	ProductPrice int `json:"product_price"`
+	ProductPrice int `json:"product_price" bson:"product_price"`
 
 	// Product rating.
 	//
 	// Example:
 	// 5 means five-star rating.
-	ProductRating int `json:"product_rating"`
+	ProductRating int `json:"product_rating" bson:"product_rating"`
 
 	// URL pointing to the product image.
-	Image string `json:"image"`
+	Image string `json:"image" bson:"image"`
 }
 
 // ProductUser represents one product that the user
@@ -148,16 +149,15 @@ type Product struct {
 // keeping it separate allows adding user-specific
 // information later (quantity, selected size, etc.).
 type ProductUser struct {
-
 	ProductID primitive.ObjectID `json:"_id" bson:"_id"`
 
-	ProductName string `json:"product_name"`
+	ProductName string `json:"product_name" bson:"product_name"`
 
-	ProductPrice int `json:"product_price"`
+	ProductPrice int `json:"product_price" bson:"product_price"`
 
-	ProductRating int `json:"product_rating"`
+	ProductRating int `json:"product_rating" bson:"product_rating"`
 
-	Image string `json:"image"`
+	Image string `json:"image" bson:"image"`
 }
 
 // Address represents one saved delivery address.
@@ -193,7 +193,7 @@ type Order struct {
 
 	// OrderCart stores all products purchased
 	// in this particular order.
-	OrderCart []ProductUser `json:"order_cart"`
+	OrderCart []ProductUser `json:"order_cart" bson:"order_cart"`
 
 	// OrderedAt stores the exact time
 	// when the order was placed.

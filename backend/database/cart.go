@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"net/http"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -451,4 +452,24 @@ func InstantBuyer(ctx *gin.Context, prodCollection, userCollection *mongo.Collec
 		log.Println(err)
 	}
 	return nil
+}
+
+func GetOrder() gin.HandlerFunc {
+	return func(ctx *gin.Context) {
+		userCollection := GetCollection(Client, "user")
+		userId := ctx.Query("user_id")
+		filter2 := bson.D{primitive.E{Key: "_id", Value: userId}}
+
+		var foundUser models.User
+		err := userCollection.FindOne(ctx, filter2).Decode(&foundUser)
+		if err != nil {
+			ctx.JSON(500, "Cannot get order collection")
+			return
+		}
+
+		UserOrder := foundUser.OrderStatus
+
+		ctx.JSON(http.StatusAccepted, UserOrder)
+
+	}
 }

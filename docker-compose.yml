@@ -1,0 +1,37 @@
+
+#service is telling what all applications will be run each application is a service
+
+services:
+
+  backend:
+  #build helps search the docker file in the backend folder
+    build: ./backend
+    #Laptop Port : Container Port connect my laptop port to the container port
+    ports:
+      - "8000:8000"
+    depends_on:
+    #Start MongoDB before starting the backend.
+      - mongodb
+
+  frontend:
+    build: ./frontend
+    ports:
+      - "5173:5173"
+    depends_on:
+      - backend
+
+  mongodb:
+  # here no build as no docker file 
+    image: mongo:8
+    ports:
+      - "27017:27017"
+      #Think of a volume as a hard drive attached to the container.
+
+# Even if the container is destroyed,
+
+# the data remains.
+    volumes:
+      - mongo_data:/data/db
+
+volumes:
+  mongo_data:

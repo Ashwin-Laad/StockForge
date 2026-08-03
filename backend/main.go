@@ -10,8 +10,8 @@ import (
 
 func main() {
 
-	//set port to 8080
-	Port := "8080"
+	//set port to 8000
+	Port := "8000"
 
 	//*gin.Engine an engine instance with logger and recovery preinstalled
 	router := gin.Default()

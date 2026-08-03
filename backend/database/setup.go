@@ -62,7 +62,7 @@ func ConnectToDb() *mongo.Client {
 
 	// uri := "mongodb://localhost:27017"
 
-	uri := "mongodb://localhost:27017"
+	uri := "mongodb://mongodb:27017"
 
 	// ApplyURI creates a ClientOptions object.
 	//

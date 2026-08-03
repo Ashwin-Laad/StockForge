@@ -2,10 +2,10 @@ import { useEffect, useState, useContext } from "react";
 import api from "../api/axios";
 import ProductCard from "../components/ProductCard";
 import SearchBar from "../components/SearchBar";
-import { CartContext } from "../context/CartContext";
+
 function Home() {
 
-    const { setCartCount } = useContext(CartContext);
+
     const [products, setProducts] = useState([]);
     const [search, setSearch] = useState("");
     const [loading, setLoading] = useState(false);

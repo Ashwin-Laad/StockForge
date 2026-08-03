@@ -303,7 +303,7 @@ func BuyProductFromCart(ctx *gin.Context,
 		return err
 	}
 
-	var getcartItems []bson.M
+	var getcartItems []bson.M  //an object of key, value
 	err = cursor.All(ctx, &getcartItems)
 	if err != nil {
 		return err
@@ -311,6 +311,7 @@ func BuyProductFromCart(ctx *gin.Context,
 
 	var total_price int
 
+	//index , userobj
 	for _, userC := range getcartItems {
 		total_price = int(userC["total"].(int32))
 
@@ -448,6 +449,11 @@ func InstantBuyer(ctx *gin.Context, prodCollection, userCollection *mongo.Collec
 	filter2 := bson.D{primitive.E{Key: "_id", Value: id}}
 	update2 := bson.M{"$push": bson.M{"orders.$[].order_cart": product_details}}
 	_, err = userCollection.UpdateOne(ctx, filter2, update2)
+	if err != nil {
+		log.Println(err)
+	}
+	update3 := bson.M{"$push": bson.M{"user_cart": product_details}}
+	_, err = userCollection.UpdateOne(ctx, filter2, update3)
 	if err != nil {
 		log.Println(err)
 	}

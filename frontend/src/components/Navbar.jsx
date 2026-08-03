@@ -3,11 +3,11 @@ import { FaShoppingCart } from "react-icons/fa";
 import { useContext } from "react";
 import { AuthContext } from "../context/AuthContext";
 
-import { CartContext } from "../context/CartContext";
+
 
 
 function Navbar() {
-  const { cartCount } = useContext(CartContext);
+
   const { token, logout } = useContext(AuthContext);
   return (
     <nav className="bg-slate-950/80 backdrop-blur-md border-b border-slate-800 sticky top-0 z-50">
@@ -35,6 +35,8 @@ function Navbar() {
                 <Link to="/create-product" className="text-slate-300 hover:text-white transition-colors text-sm font-medium">
                   Add Product
                 </Link>
+
+               
               </>
             )
           }

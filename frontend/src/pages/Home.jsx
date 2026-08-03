@@ -23,8 +23,11 @@ function Home() {
 
         try {
             const res = await api.get("/products");
+            if (!res.data) {
+                setProducts([])
+            }
+            else { setProducts(res.data); }
 
-            setProducts(res.data);
             console.log(res);
         } catch (err) {
             console.log(err);

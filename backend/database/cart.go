@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"net/http"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -302,7 +303,7 @@ func BuyProductFromCart(ctx *gin.Context,
 		return err
 	}
 
-	var getcartItems []bson.M
+	var getcartItems []bson.M  //an object of key, value
 	err = cursor.All(ctx, &getcartItems)
 	if err != nil {
 		return err
@@ -310,6 +311,7 @@ func BuyProductFromCart(ctx *gin.Context,
 
 	var total_price int
 
+	//index , userobj
 	for _, userC := range getcartItems {
 		total_price = int(userC["total"].(int32))
 
@@ -450,5 +452,30 @@ func InstantBuyer(ctx *gin.Context, prodCollection, userCollection *mongo.Collec
 	if err != nil {
 		log.Println(err)
 	}
+	update3 := bson.M{"$push": bson.M{"user_cart": product_details}}
+	_, err = userCollection.UpdateOne(ctx, filter2, update3)
+	if err != nil {
+		log.Println(err)
+	}
 	return nil
+}
+
+func GetOrder() gin.HandlerFunc {
+	return func(ctx *gin.Context) {
+		userCollection := GetCollection(Client, "user")
+		userId := ctx.Query("user_id")
+		filter2 := bson.D{primitive.E{Key: "_id", Value: userId}}
+
+		var foundUser models.User
+		err := userCollection.FindOne(ctx, filter2).Decode(&foundUser)
+		if err != nil {
+			ctx.JSON(500, "Cannot get order collection")
+			return
+		}
+
+		UserOrder := foundUser.OrderStatus
+
+		ctx.JSON(http.StatusAccepted, UserOrder)
+
+	}
 }

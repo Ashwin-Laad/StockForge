@@ -13,6 +13,7 @@ function Home() {
     useEffect(() => {
         if (search.trim() === "") {
             getProducts();
+            
         } else {
             searchProducts();
         }

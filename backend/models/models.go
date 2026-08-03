@@ -170,6 +170,7 @@ type Address struct {
 	AddressID primitive.ObjectID `bson:"_id"`
 
 	// House or apartment number.
+	
 	House string `json:"house_name"`
 
 	// Street name.
@@ -197,17 +198,17 @@ type Order struct {
 
 	// OrderedAt stores the exact time
 	// when the order was placed.
-	OrderedAt time.Time `json:"ordered_at"`
+	OrderedAt time.Time `json:"ordered_at" bson:"ordered_at"`
 
 	// Total order price.
-	Price int `json:"price"`
+	Price int `json:"price" bson:"price"`
 
 	// Discount applied on the order.
-	Discount int `json:"discount"`
+	Discount int `json:"discount" bson:"discount"`
 
 	// PaymentMethod stores how
 	// the customer paid.
-	PaymentMethod Payment `json:"payment_method"`
+	PaymentMethod Payment `json:"payment_method" bson:"payment_method"`
 }
 
 // Payment represents the payment mode

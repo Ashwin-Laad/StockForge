@@ -97,6 +97,7 @@ func UserRouter(router *gin.Engine) {
 
 	router.GET("/instantbuy", app.InstantBuy())
 
+	router.GET("/get-cart", app.GetTotalFromUserCart())
 
-	router.GET("/get-cart",app.GetTotalFromUserCart())
+	router.GET("/prev-order", database.GetOrder())
 }

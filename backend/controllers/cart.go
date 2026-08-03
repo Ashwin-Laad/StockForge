@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"os"
 
 	"github.com/gin-gonic/gin"
 	"go.mongodb.org/mongo-driver/bson"
@@ -287,7 +288,17 @@ func (app *Application) BuyItemFromCart() gin.HandlerFunc {
 			ctx.JSON(http.StatusInternalServerError, err.Error())
 			return
 		}
+		//run a goroutine for concurrent logging
+		go func() {
+			file, err := os.OpenFile("User.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+			if err != nil {
+				ctx.JSON(http.StatusInternalServerError, err.Error())
+				return
+			}
+			defer file.Close()
 
+			file.WriteString(fmt.Sprintf("userId %s bought a Product", UserId))
+		}()
 		ctx.JSON(http.StatusAccepted, "Item bought from cart")
 
 	}

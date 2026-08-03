@@ -490,3 +490,6 @@ func (app *Application) GetTotalFromUserCart() gin.HandlerFunc {
 		})
 	}
 }
+
+
+

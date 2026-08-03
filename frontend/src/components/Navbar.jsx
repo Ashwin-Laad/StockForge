@@ -4,6 +4,8 @@ import { useContext } from "react";
 import { AuthContext } from "../context/AuthContext";
 
 
+
+
 function Navbar() {
 
   const { token, logout } = useContext(AuthContext);
@@ -33,6 +35,8 @@ function Navbar() {
                 <Link to="/create-product" className="text-slate-300 hover:text-white transition-colors text-sm font-medium">
                   Add Product
                 </Link>
+
+               
               </>
             )
           }

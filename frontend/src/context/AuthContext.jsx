@@ -4,9 +4,13 @@ export const AuthContext = createContext();
 
 function AuthProvider({ children }) {
 
+
+  //what ever stored on the browser 
   const [token, setToken] = useState(
     localStorage.getItem("token") || ""
   );
+
+  //send from the backend and called
 
   function login(jwt, userID) {
     localStorage.setItem("token", jwt);
@@ -14,7 +18,7 @@ function AuthProvider({ children }) {
 
     setToken(jwt);
   }
-
+//requires a fresh login
   function logout() {
     localStorage.removeItem("token");
     setToken("");
@@ -23,6 +27,7 @@ function AuthProvider({ children }) {
   return (
     <AuthContext.Provider
       value={{
+        //any children can actually access this token
         token,
         login,
         logout,

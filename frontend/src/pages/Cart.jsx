@@ -2,17 +2,20 @@ import { useEffect, useState } from "react";
 import api from "../api/axios";
 import ProductCard from "../components/ProductCard";
 import { useNavigate } from "react-router-dom";
+import {useDispatch, useSelector} from "react-redux";
+import { loadCart } from "../../redux/cartSlice";
+
 function Cart() {
 
   const navigate = useNavigate();
-
-  const [cart, setCart] = useState([]);
-
-  const [total, setTotal] = useState(0);
+const dispatch=useDispatch();
+  // const [cart, setCart] = useState([]);
+ const cart= useSelector(state=>state.cart.items)
+  // const [total, setTotal] = useState(0);
+  const total=useSelector(state=>state.cart.total)
 
   useEffect(() => {
-
-    loadCart();
+  dispatch(loadCart())
 
   }, []);
 
@@ -32,17 +35,17 @@ function Cart() {
 
   }
 
-  async function loadCart() {
+  // async function loadCart() {
 
-    const id = localStorage.getItem("userID");
+  //   const id = localStorage.getItem("userID");
 
-    const res = await api.get(`/get-cart?id=${id}`);
+  //   const res = await api.get(`/get-cart?id=${id}`);
 
-    setCart(res.data.cart);
+  //   setCart(res.data.cart);
 
-    setTotal(res.data.total);
+  //   setTotal(res.data.total);
 
-  }
+  // }
 
   return (
 
@@ -59,7 +62,7 @@ function Cart() {
           <ProductCard
             key={product._id}
             product={product}
-            onRemove={loadCart}
+            removeBool={true}
           />
         ))}
       </div>

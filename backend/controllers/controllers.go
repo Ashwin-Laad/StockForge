@@ -4,7 +4,6 @@ import (
 	"Mod/database"
 	"Mod/models"
 	"Mod/token"
-	"fmt"
 
 	"net/http"
 	"time"
@@ -17,36 +16,8 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
-// HashPassword converts a plain-text password into a secure hashed password.
-//
-// NOTE:
-// The implementation is assumed to exist elsewhere.
-// In production this would typically use bcrypt.
-
-// HashPassword converts a plain-text password into a hashed password.
-//
-// Why hash passwords?
-// -------------------
-// Passwords should NEVER be stored directly in the database.
-//
-// Instead, bcrypt converts the password into a secure one-way hash.
-//
-// Example:
-//
-// Password:
-//
-//	hello123
-//
-// Stored in MongoDB:
-//
-//	$2a$10$9jz3g4X8K7...
-//
-// Even if someone gains access to the database,
-// they cannot recover the original password.
 func HashPassword(password string) string {
 
-	// GenerateFromPassword creates a bcrypt hash.
-	//
 	// Parameters:
 	//
 	// []byte(password)
@@ -76,13 +47,7 @@ func HashPassword(password string) string {
 
 // VerifyPassword compares the password entered by the user
 // with the hashed password stored in MongoDB.
-//
-// Returns:
-//
-//	true  -> Passwords match
-//	false -> Passwords do not match
-//
-// The second return value contains an error message.
+
 func VerifyPassword(
 	userPassword string,
 	hashedPassword string,
@@ -113,44 +78,21 @@ func VerifyPassword(
 }
 
 // SignUp returns a Gin handler responsible for registering a new user.
-//
-// Why return gin.HandlerFunc?
-// ---------------------------
-// Gin expects every route to receive a handler function.
-//
-// Instead of executing immediately, this function returns another
-// function that Gin stores internally.
-//
-// Later, whenever a request arrives at:
-//
-//	POST /user/signup
-//
-// Gin executes the returned function.
+
 func SignUp() gin.HandlerFunc {
 
 	return func(ctx *gin.Context) {
 
-		//--------------------------------------------------------
-		// Step 1 : Read incoming JSON
-		//--------------------------------------------------------
-
+		// Read incoming JSON
 		// user will hold the JSON received from the client.
-		//
-		// Example JSON:
-		//
-		// {
-		//   "first_name":"Ashwin",
-		//   "email":"abc@gmail.com"
-		// }
+
 		var user models.User
 
 		// BindJSON:
 		//
 		// Reads the HTTP request body.
 		// Converts JSON into the User struct.
-		//
-		// The '&' passes the address of the struct because
-		// BindJSON needs permission to modify it.
+
 		if err := ctx.BindJSON(&user); err != nil {
 
 			ctx.JSON(http.StatusBadRequest, gin.H{
@@ -159,11 +101,10 @@ func SignUp() gin.HandlerFunc {
 			return
 		}
 
-		//--------------------------------------------------------
-		// Step 2 : Validate fields
-		//--------------------------------------------------------
+		//Validate fields
 
 		validate := validator.New()
+		//validates the fields with the annotations provided
 
 		if err := validate.Struct(user); err != nil {
 
@@ -174,16 +115,11 @@ func SignUp() gin.HandlerFunc {
 			return
 		}
 
-		//--------------------------------------------------------
-		// Step 3 : Access User collection
-		//--------------------------------------------------------
+		//Access User collection
 
 		userCollection := database.GetCollection(database.Client, "User")
 
-		//--------------------------------------------------------
-		// Step 4 : Check if email already exists
-		//--------------------------------------------------------
-
+		//  Check if email already exists
 		count, err := userCollection.CountDocuments(
 			ctx,
 			bson.M{
@@ -209,15 +145,12 @@ func SignUp() gin.HandlerFunc {
 			return
 		}
 
-		//--------------------------------------------------------
-		// Step 5 : Hash password
-		//--------------------------------------------------------
+		//  Hash password
 
 		user.Password = HashPassword(user.Password)
 
-		//--------------------------------------------------------
-		// Step 6 : Generate server-side fields
-		//--------------------------------------------------------
+		//  Generate server-side fields
+		//start with token creation
 
 		token, refreshToken, err := token.GenerateToken(
 			user.FirstName,
@@ -235,7 +168,7 @@ func SignUp() gin.HandlerFunc {
 		user.CreatedAt = time.Now()
 		user.UpdatedAt = time.Now()
 
-		user.UserID = primitive.NewObjectID().Hex()
+		user.UserID = primitive.NewObjectID().Hex() //human readable form of the hex id (stored as binary)
 
 		user.UserCart = make([]models.ProductUser, 0)
 
@@ -243,9 +176,7 @@ func SignUp() gin.HandlerFunc {
 
 		user.OrderStatus = make([]models.Order, 0)
 
-		//--------------------------------------------------------
-		// Step 7 : Insert into MongoDB
-		//--------------------------------------------------------
+		//  Insert into MongoDB
 
 		_, err = userCollection.InsertOne(ctx, user)
 
@@ -258,9 +189,7 @@ func SignUp() gin.HandlerFunc {
 			return
 		}
 
-		//--------------------------------------------------------
-		// Step 8 : Success response
-		//--------------------------------------------------------
+		//  Success response
 
 		ctx.JSON(http.StatusCreated, gin.H{
 			"message": "Successfully signed up",
@@ -273,9 +202,7 @@ func Login() gin.HandlerFunc {
 
 	return func(ctx *gin.Context) {
 
-		//--------------------------------------------------------
-		// Step 1 : Read JSON
-		//--------------------------------------------------------
+		//  Read JSON
 
 		var user models.User
 
@@ -288,15 +215,11 @@ func Login() gin.HandlerFunc {
 			return
 		}
 
-		//--------------------------------------------------------
-		// Step 2 : Get collection
-		//--------------------------------------------------------
+		//Get collection
 
 		userCollection := database.GetCollection(database.Client, "User")
 
-		//--------------------------------------------------------
-		// Step 3 : Find user by email
-		//--------------------------------------------------------
+		//  Find user by email
 
 		var foundUser models.User
 
@@ -325,9 +248,7 @@ func Login() gin.HandlerFunc {
 			return
 		}
 
-		//--------------------------------------------------------
-		// Step 4 : Verify password
-		//--------------------------------------------------------
+		//  Verify password
 
 		isValid, message := VerifyPassword(
 			user.Password,
@@ -343,9 +264,7 @@ func Login() gin.HandlerFunc {
 			return
 		}
 
-		//--------------------------------------------------------
-		// Step 5 : Generate new tokens
-		//--------------------------------------------------------
+		// Generate new tokens
 
 		token, refreshToken, err := token.GenerateToken(
 			foundUser.FirstName,
@@ -360,9 +279,7 @@ func Login() gin.HandlerFunc {
 		foundUser.Token = token
 		foundUser.RefreshToken = refreshToken
 
-		//--------------------------------------------------------
-		// Step 6 : Send response
-		//--------------------------------------------------------
+		//  Send response
 
 		ctx.JSON(http.StatusOK, gin.H{
 			"message": "Login successful",
@@ -380,9 +297,7 @@ func (app *Application) AddProduct() gin.HandlerFunc {
 
 		var product models.Product
 
-		//----------------------------------------------------
 		// Read JSON
-		//----------------------------------------------------
 
 		if err := ctx.BindJSON(&product); err != nil {
 			ctx.JSON(http.StatusBadRequest, gin.H{
@@ -391,17 +306,12 @@ func (app *Application) AddProduct() gin.HandlerFunc {
 			return
 		}
 
-		//----------------------------------------------------
 		// Generate MongoDB ObjectID
-		//----------------------------------------------------
 
 		product.ProductID = primitive.NewObjectID()
 
-		//----------------------------------------------------
 		// Insert product
-		//----------------------------------------------------
-		fmt.Printf("%T\n", product.ProductID)
-		fmt.Println(product.ProductID.Hex())
+
 		_, err := productCollection.InsertOne(ctx, product)
 		if err != nil {
 			ctx.JSON(http.StatusInternalServerError, gin.H{
@@ -416,38 +326,39 @@ func (app *Application) AddProduct() gin.HandlerFunc {
 	}
 }
 
-func (app *Application) InstantBuy() gin.HandlerFunc {
-	return func(c *gin.Context) {
-		UserQueryID := c.Query("userid")
-		if UserQueryID == "" {
-			fmt.Println("UserID is empty")
-			c.JSON(http.StatusBadRequest, "Id not given")
-			return
-		}
-		ProductQueryID := c.Query("pid")
-		if ProductQueryID == "" {
-			fmt.Println("Product_ID id is empty")
-			c.JSON(http.StatusBadRequest, "product_id is empty")
-		}
-		productID, err := primitive.ObjectIDFromHex(ProductQueryID)
-		if err != nil {
-			fmt.Println(err)
-			c.AbortWithStatus(http.StatusInternalServerError)
-			return
-		}
+// func (app *Application) BuyDirectly() gin.HandlerFunc {
+// 	return func(c *gin.Context) {
+// 		UserQueryID := c.Query("userid")
+// 		if UserQueryID == "" {
+// 			fmt.Println("UserID is empty")
+// 			c.JSON(http.StatusBadRequest, "Id not given")
+// 			return
+// 		}
+// 		ProductQueryID := c.Query("pid")
+// 		if ProductQueryID == "" {
+// 			fmt.Println("Product_ID id is empty")
+// 			c.JSON(http.StatusBadRequest, "product_id is empty")
+// 		}
+// 		productID, err := primitive.ObjectIDFromHex(ProductQueryID)
+// 		if err != nil {
+// 			fmt.Println(err)
+// 			c.AbortWithStatus(http.StatusInternalServerError)
+// 			return
+// 		}
 
-		err = database.InstantBuyer(c, app.prodCollection, app.userCollection, productID, UserQueryID)
-		if err != nil {
-			c.IndentedJSON(http.StatusInternalServerError, err)
-		}
-		c.IndentedJSON(200, "Successully placed the order")
-	}
-}
+// 		err = database.InstantBuyer(c, app.prodCollection, app.userCollection, productID, UserQueryID)
+// 		if err != nil {
+// 			c.IndentedJSON(http.StatusInternalServerError, err)
+// 		}
+// 		c.IndentedJSON(200, "Successully placed the order")
+// 	}
+// }
 
+// gives the total and user cart
 func (app *Application) GetTotalFromUserCart() gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 
-		userID := ctx.Query("id")
+		userID := ctx.Query("id") //string format
 		if userID == "" {
 			ctx.JSON(http.StatusBadRequest, gin.H{
 				"error": "No user ID",
@@ -456,11 +367,11 @@ func (app *Application) GetTotalFromUserCart() gin.HandlerFunc {
 			return
 		}
 
+		//converts object id in hexadecimal form to object id in mongo
 		UserHexId, err := primitive.ObjectIDFromHex(userID)
 
-		// //get the user whole profile from this userID
-		// var NeededUser models.User
-		// // primitive.E represents one field of a MongoDB document.
+		// // primitive.E represents one field of a MongoDB document. A single key pair value .M is a map
+
 		// _, err:= app.userCollection.FindOne(ctx,bson.D{primitive.E{Key: "_id", Value: UserHexId}})
 
 		if err != nil {
@@ -490,6 +401,3 @@ func (app *Application) GetTotalFromUserCart() gin.HandlerFunc {
 		})
 	}
 }
-
-
-

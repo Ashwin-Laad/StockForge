@@ -1,6 +1,7 @@
 package main
 
 import (
+	"Mod/database"
 	"Mod/routes"
 	"log"
 
@@ -10,8 +11,14 @@ import (
 
 func main() {
 
+
+
 	//set port to 8000
 	Port := "8000"
+
+	//initialise redis
+   database.ConnectRedis();
+	//redis client created
 
 	//*gin.Engine an engine instance with logger and recovery preinstalled
 	router := gin.Default()
@@ -30,6 +37,7 @@ func main() {
 			"Token",
 		},
 	}))
+
 	//pass the router to routes to check for the "basic routes first"
 	routes.UserRouter(router)
 

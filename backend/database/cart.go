@@ -3,8 +3,7 @@ package database
 import (
 	"Mod/models"
 	"errors"
-	"fmt"
-	"log"
+
 	"net/http"
 	"time"
 
@@ -23,12 +22,6 @@ import (
 
 func AddProductToCart(ctx *gin.Context, userCollection *mongo.Collection, prodCollection *mongo.Collection, productID primitive.ObjectID, userID primitive.ObjectID) error {
 
-	fmt.Println("inside databse add")
-
-	fmt.Println("Searching for:", productID)
-
-	fmt.Println("Searching for collection:", prodCollection.Name())
-
 	cursor, err := prodCollection.Find(ctx, bson.M{"_id": productID})
 
 	if err != nil {
@@ -44,9 +37,6 @@ func AddProductToCart(ctx *gin.Context, userCollection *mongo.Collection, prodCo
 		return err
 	}
 
-	fmt.Printf("ProductCart = %+v\n", ProductCart)
-	fmt.Println("Length =", len(ProductCart))
-	fmt.Println("Is nil =", ProductCart == nil)
 	filter := bson.M{
 		"_id": userID,
 	}
@@ -63,7 +53,6 @@ func AddProductToCart(ctx *gin.Context, userCollection *mongo.Collection, prodCo
 		return err
 	}
 
-	fmt.Println("crossed db ")
 	return nil
 
 }
@@ -75,23 +64,13 @@ func RemoveProductFromCart(
 	userID primitive.ObjectID,
 ) error {
 
-	//----------------------------------------------------
 	// Find the user document.
-	//----------------------------------------------------
-	fmt.Println("The userid", userID)
-
-	fmt.Println("The productid", productID)
 
 	filter := bson.M{
 		"_id": userID,
 	}
 
-	//----------------------------------------------------
-	// Remove the product whose _id matches productID
-	// from the user's cart.
-	//
-	// $pull removes matching elements from an array.
-	//----------------------------------------------------
+	//pull removes an element from the array
 
 	update := bson.M{
 		"$pull": bson.M{
@@ -101,9 +80,7 @@ func RemoveProductFromCart(
 		},
 	}
 
-	//----------------------------------------------------
 	// Update the user's cart.
-	//----------------------------------------------------
 
 	result, err := userCollection.UpdateOne(
 		ctx,
@@ -115,22 +92,19 @@ func RemoveProductFromCart(
 		return err
 	}
 
-	//----------------------------------------------------
 	// No user found.
-	//----------------------------------------------------
 
 	if result.MatchedCount == 0 {
 		return errors.New("user not found")
 	}
 
-	//----------------------------------------------------
 	// User exists but the product was not present
 	// in the cart.
-	//----------------------------------------------------
 
 	if result.ModifiedCount == 0 {
 		return errors.New("product not found in cart")
 	}
+	//remove product from cache
 
 	return nil
 }
@@ -140,7 +114,6 @@ func BuyProductFromCart(ctx *gin.Context,
 	userID primitive.ObjectID,
 ) error {
 
-	fmt.Println("Reached db ")
 	var getCartItem models.User
 	var order models.Order
 
@@ -149,15 +122,9 @@ func BuyProductFromCart(ctx *gin.Context,
 	order.OrderCart = make([]models.ProductUser, 0)
 	order.PaymentMethod.Digital = true
 
-	//------------------------------------------------------------
-	// Stage 1 - Unwind the user's cart
-	//------------------------------------------------------------
+	// Unwind the user's cart
+	//unwind allows for aggregation operations
 
-	// The "user_cart" field is an array containing every product
-	// the user has added to their shopping cart.
-	//
-	// Example document:
-	//
 	// {
 	//     "_id": 101,
 	//     "user_cart": [
@@ -168,17 +135,7 @@ func BuyProductFromCart(ctx *gin.Context,
 	// }
 	//
 	// MongoDB cannot directly calculate the sum of prices inside an array.
-	//
-	// "$unwind" breaks the array into multiple documents.
-	//
-	// Before $unwind:
-	//
-	// User
-	//   |
-	//   |---- Laptop
-	//   |---- Mouse
-	//   |---- Keyboard
-	//
+
 	// After $unwind:
 	//
 	// Document 1 -> Laptop
@@ -186,7 +143,7 @@ func BuyProductFromCart(ctx *gin.Context,
 	// Document 3 -> Keyboard
 	//
 	// Each product now behaves like its own MongoDB document,
-	// allowing aggregation operators such as $sum to process them.
+
 	unwind := bson.D{
 		{
 			Key: "$unwind",
@@ -199,30 +156,18 @@ func BuyProductFromCart(ctx *gin.Context,
 		},
 	}
 
-	//
-	//------------------------------------------------------------
-	// Stage 2 - Group the documents and calculate the total price
-	//------------------------------------------------------------
+	//Group the documents and calculate the total price
+
 	//
 	// After $unwind, every product exists as a separate document.
 	//
 	// We now regroup those documents using the user's "_id"
 	// and calculate the total price of every product in the cart.
-	//
-	// Example:
-	//
-	// After unwind:
-	//
-	// User 101 -> Laptop   -> 50000
-	// User 101 -> Mouse    -> 1000
-	// User 101 -> Keyboard -> 3000
-	//
-	// $group combines them back together.
-	//
+
 	// "$sum" adds the value of the "product_price"
 	// field from every unwound document.
 	//
-	// Result:
+
 	//
 	// {
 	//     "_id": 101,
@@ -256,11 +201,9 @@ func BuyProductFromCart(ctx *gin.Context,
 			},
 		},
 	}
-	fmt.Println("INTO AGG ")
-	//
-	//------------------------------------------------------------
+
 	// Execute the aggregation pipeline
-	//------------------------------------------------------------
+
 	//
 	// Aggregate() executes every stage in order.
 	//
@@ -297,13 +240,12 @@ func BuyProductFromCart(ctx *gin.Context,
 		},
 	)
 
-	fmt.Println("CROSSED AGG")
-
 	if err != nil {
 		return err
 	}
 
-	var getcartItems []bson.M  //an object of key, value
+	var getcartItems []bson.M //an object of key, value mongodb return a cursor of document so have to contain in slice
+
 	err = cursor.All(ctx, &getcartItems)
 	if err != nil {
 		return err
@@ -363,22 +305,6 @@ func BuyProductFromCart(ctx *gin.Context,
 
 	//get me the document with the matcing Id from the user table
 
-	//the need for bson
-	// 	Go Struct
-	//       ↓
-	// BSON
-	//       ↓
-	// MongoDB
-
-	// or
-
-	// MongoDB
-	//       ↓
-	// BSON
-	//       ↓
-	// Go Struct
-
-	// The Go driver needs Go data structures that it can convert into BSON before sending them to MongoDB.
 	filter3 := bson.D{
 		{Key: "_id", Value: userID},
 	}
@@ -412,53 +338,57 @@ func BuyProductFromCart(ctx *gin.Context,
 	if err != nil {
 		return err
 	}
+	// err = RedisClient.Del(ctx, "products").Err()
+	// if err != nil {
+	// 	return err
+	// }
 	return nil
 
 }
 
-func InstantBuyer(ctx *gin.Context, prodCollection, userCollection *mongo.Collection, productID primitive.ObjectID, UserID string) error {
+// func InstantBuyer(ctx *gin.Context, prodCollection, userCollection *mongo.Collection, productID primitive.ObjectID, UserID string) error {
 
-	id, err := primitive.ObjectIDFromHex(UserID)
-	if err != nil {
-		log.Println(err)
-		return err
-	}
-	var product_details models.ProductUser
-	var orders_detail models.Order
+// 	id, err := primitive.ObjectIDFromHex(UserID)
+// 	if err != nil {
+// 		log.Println(err)
+// 		return err
+// 	}
+// 	var product_details models.ProductUser
+// 	var orders_detail models.Order
 
-	orders_detail.OrderID = primitive.NewObjectID()
-	orders_detail.OrderedAt = time.Now()
-	orders_detail.OrderCart = make([]models.ProductUser, 0)
-	orders_detail.PaymentMethod.COD = true
+// 	orders_detail.OrderID = primitive.NewObjectID()
+// 	orders_detail.OrderedAt = time.Now()
+// 	orders_detail.OrderCart = make([]models.ProductUser, 0)
+// 	orders_detail.PaymentMethod.COD = true
 
-	err = prodCollection.FindOne(ctx, bson.D{primitive.E{Key: "_id", Value: productID}}).Decode(&product_details)
-	if err != nil {
-		log.Println(err)
-	}
+// 	err = prodCollection.FindOne(ctx, bson.D{primitive.E{Key: "_id", Value: productID}}).Decode(&product_details)
+// 	if err != nil {
+// 		log.Println(err)
+// 	}
 
-	orders_detail.Price = product_details.ProductPrice
+// 	orders_detail.Price = product_details.ProductPrice
 
-	filter := bson.D{primitive.E{Key: "_id", Value: id}}
-	update := bson.D{{Key: "$push", Value: bson.D{primitive.E{Key: "orders", Value: orders_detail}}}}
-	_, err = userCollection.UpdateOne(ctx, filter, update)
+// 	filter := bson.D{primitive.E{Key: "_id", Value: id}}
+// 	update := bson.D{{Key: "$push", Value: bson.D{primitive.E{Key: "orders", Value: orders_detail}}}}
+// 	_, err = userCollection.UpdateOne(ctx, filter, update)
 
-	if err != nil {
-		log.Println(err)
-	}
+// 	if err != nil {
+// 		log.Println(err)
+// 	}
 
-	filter2 := bson.D{primitive.E{Key: "_id", Value: id}}
-	update2 := bson.M{"$push": bson.M{"orders.$[].order_cart": product_details}}
-	_, err = userCollection.UpdateOne(ctx, filter2, update2)
-	if err != nil {
-		log.Println(err)
-	}
-	update3 := bson.M{"$push": bson.M{"user_cart": product_details}}
-	_, err = userCollection.UpdateOne(ctx, filter2, update3)
-	if err != nil {
-		log.Println(err)
-	}
-	return nil
-}
+// 	filter2 := bson.D{primitive.E{Key: "_id", Value: id}}
+// 	update2 := bson.M{"$push": bson.M{"orders.$[].order_cart": product_details}}
+// 	_, err = userCollection.UpdateOne(ctx, filter2, update2)
+// 	if err != nil {
+// 		log.Println(err)
+// 	}
+// 	update3 := bson.M{"$push": bson.M{"user_cart": product_details}}
+// 	_, err = userCollection.UpdateOne(ctx, filter2, update3)
+// 	if err != nil {
+// 		log.Println(err)
+// 	}
+// 	return nil
+// }
 
 func GetOrder() gin.HandlerFunc {
 	return func(ctx *gin.Context) {

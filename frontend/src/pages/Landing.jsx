@@ -20,15 +20,15 @@ function Landing() {
         <div>
 
           <h1 className="text-6xl font-bold leading-tight">
-            Manage Your Inventory
+            Eveything You Need, All In 
             <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-emerald-400">
-              {" "}Smarter
+              {" "}One Place
             </span>
           </h1>
 
           <p className="mt-6 text-lg text-slate-400">
-            InventoryPro helps businesses manage products,
-            track orders, organize customers, and simplify
+            InventoryPro helps you discover, manage products,
+            place orders and simplify
             the entire shopping experience.
           </p>
 

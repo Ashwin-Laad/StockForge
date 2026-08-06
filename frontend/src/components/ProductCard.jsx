@@ -1,6 +1,14 @@
 import api from "../api/axios";
+import {useDispatch} from "react-redux";
+import { loadCart } from "../../redux/cartSlice";
 
-function ProductCard({ product, onAdd, onRemove }) {
+
+function ProductCard({ product, onAdd , removeBool }) {
+
+
+  const dispatch=useDispatch();
+
+  
   async function remove(productID) {
     try {
       const id = localStorage.getItem("userID");
@@ -11,9 +19,13 @@ function ProductCard({ product, onAdd, onRemove }) {
         `/user/remove-product?id=${productID}&user_id=${id}`
       );
 
-      if (onRemove) {
-        onRemove();
-      }
+      // if (onRemove) {
+      //   // onRemove();
+      // }
+
+      dispatch(loadCart());
+
+
     } catch (err) {
       console.log(err);
     }
@@ -49,7 +61,7 @@ function ProductCard({ product, onAdd, onRemove }) {
           </button>
         )}
 
-        {onRemove && (
+        {removeBool && (
           <button
             className="mt-2 w-full bg-red-500/10 border border-red-500/30 text-red-400 hover:bg-red-500/20 hover:text-red-300 py-2 rounded-lg transition-colors"
             onClick={() => remove(product._id)}

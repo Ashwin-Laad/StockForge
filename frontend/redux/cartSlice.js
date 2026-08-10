@@ -4,7 +4,7 @@ import api from "../src/api/axios"
 export const loadCart= createAsyncThunk("cart/loadCart",
 
     async ()=>{
-    const id = localStorage.getItem("userID");
+    const id = localStorage.getItem("userId");
 
     const res = await api.get(`/get-cart?id=${id}`);
         

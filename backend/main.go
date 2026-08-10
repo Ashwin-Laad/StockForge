@@ -16,9 +16,9 @@ func main() {
 	//set port to 8000
 	Port := "8000"
 
-	//initialise redis
+	// initialise redis
    database.ConnectRedis();
-	//redis client created
+	// redis client created
 
 	//*gin.Engine an engine instance with logger and recovery preinstalled
 	router := gin.Default()

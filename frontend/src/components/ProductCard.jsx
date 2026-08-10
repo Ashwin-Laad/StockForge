@@ -22,7 +22,7 @@ function ProductCard({ product, onAdd , removeBool }) {
       // if (onRemove) {
       //   // onRemove();
       // }
-
+      //instead of defining and calling function here i dispatch it
       dispatch(loadCart());
 
 

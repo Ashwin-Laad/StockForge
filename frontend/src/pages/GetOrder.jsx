@@ -5,7 +5,7 @@ import SearchBar from "../components/SearchBar";
 
 function Home() {
 
-  
+
     const [products, setProducts] = useState([]);
 
     const [loading, setLoading] = useState(false);
@@ -14,16 +14,18 @@ function Home() {
     async function getProducts() {
         setLoading(true);
 
-        try {  const userID = localStorage.getItem("userID");
+        try {
+            const userID = localStorage.getItem("userId");
 
             const res = await api.get("/prev-order?user_id=", userID);
-            if(!res.data) {
+            if (!res.data) {
                 setProducts([])
             }
-            else{  setProducts(res.data);
+            else {
+                setProducts(res.data);
 
             }
-          
+
             console.log(res);
         } catch (err) {
             console.log(err);

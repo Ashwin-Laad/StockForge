@@ -3,15 +3,15 @@ package controllers
 import (
 	"Mod/database"
 	"Mod/models"
+	"time"
+
+	// "context"
 	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
 	"os"
-	"time"
-
-	"github.com/redis/go-redis/v9"
 
 	"github.com/gin-gonic/gin"
 	"go.mongodb.org/mongo-driver/bson"
@@ -221,7 +221,7 @@ func (app *Application) GetProducts() gin.HandlerFunc {
 
 	// Returns every product stored in the Products collection.
 	return func(ctx *gin.Context) {
-		start := time.Now()
+		// start := time.Now()
 
 		// products will hold every document retrieved from MongoDB.
 		var products []models.Product
@@ -233,70 +233,86 @@ func (app *Application) GetProducts() gin.HandlerFunc {
 		ctxt, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 		defer cancel()
 		cachedData, err := database.RedisClient.Get(ctxt, "products").Result()
-		if err == nil {
+		// cachedData, err := database.RedisGet("products")
+
+		fmt.Println("REDIS DATA:", cachedData)
+		fmt.Println("REDIS ERROR:", err)
+		if err == nil && cachedData != "" {
 			err := json.Unmarshal([]byte(cachedData), &products)
 			if err != nil {
 				return
 			}
 
 			ctx.JSON(http.StatusOK, products)
+			return
 
-		} else if err == redis.Nil {
-			// Empty filter.
-			//
-			// bson.D{{}} tells MongoDB:
-			// "Return every document in this collection."
-
-			print("In Redis Nil")
-			cursor, err := app.prodCollection.Find(ctx, bson.D{{}})
-			if err != nil {
-
-				ctx.JSON(http.StatusInternalServerError, gin.H{
-					"error": err.Error(),
-				})
-
-			}
-
-			// Always close the cursor after use.
-			defer cursor.Close(ctx)
-
-			// Decode every document from the cursor into the products slice.
-			err = cursor.All(ctx, &products)
-			if err != nil {
-
-				ctx.JSON(http.StatusInternalServerError, gin.H{
-					"error": err.Error(),
-				})
-
-				return
-			}
-
-			data, err := json.Marshal(products)
-			if err != nil {
-
-				ctx.JSON(http.StatusInternalServerError, gin.H{
-					"error": err.Error(),
-				})
-
-				return
-			}
-
-			err = database.RedisClient.Set(ctx, "products", data, 5*time.Minute).Err()
-			if err != nil {
-				ctx.JSON(http.StatusInternalServerError, gin.H{
-					"error": err.Error(),
-				})
-
-				return
-			}
-			elapsed := time.Since(start)
-
-			println("Time: ", elapsed)
-			// Gin automatically marshals the slice into JSON.
-			ctx.JSON(http.StatusOK, products)
-		} else {
-			print("Redis fetch err", err.Error())
 		}
+		// Empty filter.
+		//
+		// bson.D{{}} tells MongoDB:
+		// "Return every document in this collection."
+
+		print("In process to fetch from mongodb")
+		cursor, err := app.prodCollection.Find(ctx, bson.D{{}})
+		if err != nil {
+
+			ctx.JSON(http.StatusInternalServerError, gin.H{
+				"error": err.Error(),
+			})
+			return
+
+		}
+
+		// Always close the cursor after use.
+		defer cursor.Close(ctx)
+
+		// Decode every document from the cursor into the products slice.
+		err = cursor.All(ctx, &products)
+		// if err != nil {
+
+		// 	ctx.JSON(http.StatusInternalServerError, gin.H{
+		// 		"error": err.Error(),
+		// 	})
+
+		// 	return
+		// }
+		if err != nil {
+			fmt.Println("MONGO FIND ERROR:", err)
+
+			ctx.JSON(http.StatusInternalServerError, gin.H{
+				"error": err.Error(),
+			})
+			return
+		}
+		data, err := json.Marshal(products)
+		if err != nil {
+
+			ctx.JSON(http.StatusInternalServerError, gin.H{
+				"error": err.Error(),
+			})
+
+			return
+		}
+
+		err = database.RedisClient.Set(ctx, "products", data, 5*time.Minute).Err()
+		if err != nil {
+			fmt.Println("REDIS SET ERROR:", err)
+		} else {
+			fmt.Println("REDIS SET SUCCESS")
+		}
+		// err = database.RedisSet("products", string(data), 300)
+		// if err != nil {
+		// 	ctx.JSON(http.StatusInternalServerError, gin.H{
+		// 		"error": err.Error(),
+		// 	})
+
+		// 	return
+		// }
+		// elapsed := time.Since(start)
+
+		// println("Time: ", elapsed)
+		// Gin automatically marshals the slice into JSON.
+		ctx.JSON(http.StatusOK, products)
 
 	}
 }

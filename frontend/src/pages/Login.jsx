@@ -1,14 +1,21 @@
 import { useState, useContext } from "react";
 import { useNavigate } from "react-router-dom";
 
+import { useDispatch } from "react-redux" //helps connect react with redux
+
+
 import api from "../api/axios";
-import { AuthContext } from "../context/AuthContext";
+// import { AuthContext } from "../context/AuthContext";
+
+import { login } from "../../redux/authSlice"
 
 function Login() {
 
   const navigate = useNavigate();
 
-  const { login } = useContext(AuthContext);
+  const dispatch = useDispatch();
+
+  // const { login } = useContext(AuthContext);
 
   const [email, setEmail] = useState("");
 
@@ -26,9 +33,12 @@ function Login() {
       });
 
       console.log(res.data);
-      login(res.data.token, res.data.user_id);
-
-
+      // login(res.data.token, res.data.user_id);
+      //here all values in login go in action as payload
+      dispatch(login({
+        jwt: res.data.token,
+        userId: res.data.user_id
+      }))
       alert("Login Successful");
 
       navigate("/");

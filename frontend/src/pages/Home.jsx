@@ -13,7 +13,7 @@ function Home() {
     useEffect(() => {
         if (search.trim() === "") {
             getProducts();
-            
+
         } else {
             searchProducts();
         }
@@ -57,7 +57,7 @@ function Home() {
 
         try {
 
-            const userID = localStorage.getItem("userID");
+            const userID = localStorage.getItem("userId");
 
             await api.post(
                 `/user/add-product?id=${userID}&iD=${productID}`

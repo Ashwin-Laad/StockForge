@@ -167,7 +167,7 @@ func (app *Application) RemoveProductFromCart() gin.HandlerFunc {
 
 		err = database.RemoveProductFromCart(ctx, app.userCollection, app.prodCollection, productObjectID, userObjectID)
 
-		print("Reacher back to controllers")
+		// print("Reacher back to controllers")
 		fmt.Println("error is", err)
 		if err != nil {
 			ctx.JSON(http.StatusInternalServerError, gin.H{"errors": err.Error()})
@@ -304,18 +304,7 @@ func (app *Application) GetProducts() gin.HandlerFunc {
 		} else {
 			fmt.Println("REDIS SET SUCCESS")
 		}
-		// err = database.RedisSet("products", string(data), 300)
-		// if err != nil {
-		// 	ctx.JSON(http.StatusInternalServerError, gin.H{
-		// 		"error": err.Error(),
-		// 	})
-
-		// 	return
-		// }
-		// elapsed := time.Since(start)
-
-		// println("Time: ", elapsed)
-		// Gin automatically marshals the slice into JSON.
+	
 		ctx.JSON(http.StatusOK, products)
 
 	}

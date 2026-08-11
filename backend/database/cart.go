@@ -210,33 +210,6 @@ func BuyProductFromCart(ctx *gin.Context,
 	// Execute the aggregation pipeline
 
 	//
-	// Aggregate() executes every stage in order.
-	//
-	// Stage 1:
-	//     $unwind
-	//
-	// Stage 2:
-	//     $group
-	//
-	// MongoDB passes the output of one stage
-	// directly into the next stage.
-	//
-	// Pipeline:
-	//
-	// User Document
-	//      |
-	//      ▼
-	//  $unwind
-	//      |
-	//      ▼
-	// One document per cart item
-	//      |
-	//      ▼
-	//   $group
-	//      |
-	//      ▼
-	// Total cart price
-	//
 	cursor, err := userCollection.Aggregate(
 		ctx,
 		mongo.Pipeline{
@@ -263,10 +236,12 @@ func BuyProductFromCart(ctx *gin.Context,
 		total_price = int(userC["total"].(int32))
 
 	}
+	
 	order.Price = total_price
 	filter := bson.D{
 		{Key: "_id", Value: userID},
 	}
+
 
 	update := bson.D{
 		{

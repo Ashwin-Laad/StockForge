@@ -289,6 +289,7 @@ func Login() gin.HandlerFunc {
 	}
 }
 
+//WHEN ADDING product we have to delete the cache from redis so that the cache is updated with the new product
 func (app *Application) AddProduct() gin.HandlerFunc {
 
 	return func(ctx *gin.Context) {

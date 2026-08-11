@@ -12,9 +12,9 @@ func ConnectToDb() *mongo.Client {
 
 	// uri stores the address of the MongoDB server.
 
-	uri := "mongodb://localhost:27017"
+	// uri := "mongodb://localhost:27017"
 
-	// uri := "mongodb://mongodb:27017"
+	uri := "mongodb://mongodb:27017"
 
 	client, err := mongo.Connect(
 		context.TODO(),

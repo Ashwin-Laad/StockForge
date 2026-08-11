@@ -1,10 +1,15 @@
 import {createSlice} from "@reduxjs/toolkit"
-
+import { useNavigate } from "react-router-dom";
+function navigateToLogin() {
+  const navigate = useNavigate();
+  navigate("/login");
+}
 const authSlice = createSlice({
   name:"auth",
   initialState:{
     token:localStorage.getItem("token") || "",
-    userId: localStorage.getItem("userId") || ""
+    userId: localStorage.getItem("userId") || "",
+    
   },
 
   //now define function which can actually change sthe state --> reducers
@@ -16,16 +21,21 @@ const authSlice = createSlice({
 
       state.token= jwt;
       state.userId=userId;
-
+    
 
     },
 
       logout: (state) => {
+          
             localStorage.removeItem("token");
             localStorage.removeItem("userId");
 
             state.token = "";
             state.userId = "";
+         
+
+          
+
         }
   }
 })

@@ -166,10 +166,14 @@ func (app *Application) RemoveProductFromCart() gin.HandlerFunc {
 		//add auto passed to handler func
 
 		err = database.RemoveProductFromCart(ctx, app.userCollection, app.prodCollection, productObjectID, userObjectID)
+
+		print("Reacher back to controllers")
+		fmt.Println("error is", err)
 		if err != nil {
-			ctx.JSON(http.StatusInternalServerError, err)
-			return
+			ctx.JSON(http.StatusInternalServerError, gin.H{"errors": err.Error()})
 		}
+
+		
 
 		ctx.JSON(http.StatusAccepted, "Removed product from cart")
 

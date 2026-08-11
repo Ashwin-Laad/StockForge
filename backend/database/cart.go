@@ -3,6 +3,7 @@ package database
 import (
 	"Mod/models"
 	"errors"
+	
 
 	"net/http"
 	"time"
@@ -53,6 +54,7 @@ func AddProductToCart(ctx *gin.Context, userCollection *mongo.Collection, prodCo
 		return err
 	}
 
+
 	return nil
 
 }
@@ -65,6 +67,7 @@ func RemoveProductFromCart(
 ) error {
 
 	// Find the user document.
+
 
 	filter := bson.M{
 		"_id": userID,
@@ -79,7 +82,7 @@ func RemoveProductFromCart(
 			},
 		},
 	}
-
+	
 	// Update the user's cart.
 
 	result, err := userCollection.UpdateOne(
@@ -88,7 +91,9 @@ func RemoveProductFromCart(
 		update,
 	)
 
+	print("reached pasted updte one havinf err ")
 	if err != nil {
+		print("reached inside error")
 		return err
 	}
 
@@ -105,7 +110,7 @@ func RemoveProductFromCart(
 		return errors.New("product not found in cart")
 	}
 	//remove product from cache
-
+	print("reacher herwhk	e")
 	return nil
 }
 func BuyProductFromCart(ctx *gin.Context,
@@ -308,7 +313,7 @@ func BuyProductFromCart(ctx *gin.Context,
 	filter3 := bson.D{
 		{Key: "_id", Value: userID},
 	}
-
+	
 	update3 := bson.D{
 		{Key: "$set", Value: bson.D{{Key: "user_cart", Value: user_cartEmpty}}},
 	}
@@ -338,10 +343,11 @@ func BuyProductFromCart(ctx *gin.Context,
 	if err != nil {
 		return err
 	}
-	// err = RedisClient.Del(ctx, "products").Err()
-	// if err != nil {
-	// 	return err
-	// }
+	//products are deleted from the database so we need to delete the cache as well
+	err = RedisClient.Del(ctx, "products").Err()
+	if err != nil {
+		return err
+	}
 	return nil
 
 }

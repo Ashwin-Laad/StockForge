@@ -11,7 +11,7 @@ function ProductCard({ product, onAdd , removeBool }) {
   
   async function remove(productID) {
     try {
-      const id = localStorage.getItem("userID");
+      const id = localStorage.getItem("userId");
       console.log("id is", id)
       console.log("id is", productID)
 

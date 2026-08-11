@@ -6,7 +6,7 @@ import {
 } from "react-icons/fa";
 
 function Landing() {
-
+  const token = localStorage.getItem("token");
   return (
     <div className="min-h-screen bg-gradient-to-b from-[#0a0f1c] via-slate-950 to-black text-white relative overflow-hidden">
 
@@ -32,8 +32,7 @@ function Landing() {
             the entire shopping experience.
           </p>
 
-
-          <div className="flex gap-5 mt-8">
+          {!token && <div className="flex gap-5 mt-8">
 
             <Link
               to="/signup"
@@ -50,7 +49,25 @@ function Landing() {
               Login
             </Link>
 
-          </div>
+          </div> }
+          {/* <div className="flex gap-5 mt-8">
+
+            <Link
+              to="/signup"
+              className="bg-gradient-to-r from-cyan-500 to-emerald-500 text-slate-950 font-bold px-8 py-3 rounded-lg hover:scale-105 hover:shadow-lg hover:shadow-cyan-500/30 transition-all"
+            >
+              Get Started
+            </Link>
+
+
+            <Link
+              to="/login"
+              className="border border-slate-700 px-8 py-3 rounded-lg hover:bg-slate-800 hover:border-slate-600 transition-colors"
+            >
+              Login
+            </Link>
+
+          </div> */}
 
         </div>
 

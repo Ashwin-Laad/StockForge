@@ -319,7 +319,12 @@ func (app *Application) AddProduct() gin.HandlerFunc {
 			})
 			return
 		}
+		//delete from redis so that the cache is updated with the new product
+		err = database.RedisClient.Del(ctx, "products").Err()
+		if err != nil {
+			println("Error deleting products from cache:", err)
 
+		}
 		ctx.JSON(http.StatusCreated, gin.H{
 			"message": "Product added successfully",
 		})

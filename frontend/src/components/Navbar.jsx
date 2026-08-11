@@ -3,7 +3,7 @@ import { FaShoppingCart } from "react-icons/fa";
 import { useContext } from "react";
 import { AuthContext } from "../context/AuthContext";
 
-
+import { useEffect } from "react";
 import { useSelector ,useDispatch } from "react-redux";
 import { logout } from "../../redux/authSlice";
 
@@ -12,7 +12,8 @@ function Navbar() {
   // const { token, logout } = useContext(AuthContext);
   const dispatch= useDispatch();
   const token= useSelector((state)=>state.auth.token);
-  
+
+
   return (
     <nav className="bg-slate-950/80 backdrop-blur-md border-b border-slate-800 sticky top-0 z-50">
       <div className="max-w-7xl mx-auto flex justify-between items-center h-16 px-6">
